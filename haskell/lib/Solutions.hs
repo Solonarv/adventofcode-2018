@@ -13,6 +13,6 @@ allSolutions :: Runnable
 allSolutions args = traverse_ ($ args) solutions
 
 nthSolution :: Int -> Maybe Runnable
-nthSolution n = case drop n solutions of
+nthSolution n = case drop (pred n) solutions of
   [] -> Nothing
   r:_ -> Just r
