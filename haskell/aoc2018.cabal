@@ -1,0 +1,49 @@
+cabal-version:       2.4
+name:                aoc2018
+version:             0.1.0.0
+synopsis:            My Advent of Code 2018 solutions.
+description:         My Advent of Code 2018 solutions.
+homepage:            https://github.com/Solonarv/adventofcode-2018#README
+license:             MIT
+license-file:        LICENSE
+author:              Solonarv
+maintainer:          nstamm@gmx.de
+-- copyright:
+-- category:
+build-type:          Simple
+extra-source-files:  CHANGELOG.md
+
+common deps
+  build-depends:       base >=4.12 && <5
+                     , containers
+                     , vector
+                     , bytestring
+                     , text
+
+common lang
+  default-language:    Haskell2010
+  -- -XKitchenSink
+  default-extensions:  TypeFamilies FlexibleContexts FlexibleInstances DataKinds GADTs
+                       TypeFamilyDependencies TypeOperators PolyKinds RankNTypes
+                       TypeApplications ScopedTypeVariables ConstraintKinds FunctionalDependencies
+                       MultiParamTypeClasses NamedFieldPuns LambdaCase BangPatterns DerivingStrategies
+                       GeneralizedNewtypeDeriving RoleAnnotations
+  ghc-options:         -Wall -O2
+
+executable solve
+  import: deps, lang
+  main-is:             Main.hs
+  hs-source-dirs:      src
+  build-depends:       aoc2018
+  ghc-options:         -threaded
+
+library
+  import: deps, lang
+  exposed-modules:     Solutions
+  hs-source-dirs:      lib
+  build-depends: day01
+
+library day01
+  import: deps, lang
+  exposed-modules: Day01
+  hs-source-dirs: day01
