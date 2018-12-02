@@ -1,21 +1,34 @@
+{-# LANGUAGE OverloadedStrings #-}
 module AOC.Harness where
 
+import Control.Exception
 import Control.Monad
 import Data.Foldable  
 import qualified Data.List as List
 import Data.Proxy
 import GHC.TypeLits
 import System.Exit (die)
-import System.IO (hSetEncoding, utf8, stdout, stderr)
+import System.IO
 import Text.Printf
 import Text.Read
 
+import qualified Data.ByteString as ByteString
+import Data.Default
 import Data.Finite
 import Data.Finite.Internal -- We need this to define a PrintfArg (Finite n) instance
+import qualified Data.HashMap.Lazy as HashMap
+import Data.Text (Text)
+import qualified Data.Text.Encoding as Text
+import qualified Data.Text.IO as Text
+import Data.Time.Clock
 import Data.Vector (Vector)
 import qualified Data.Vector as Vector
-import qualified System.Console.ANSI as Ansi
+import Network.HTTP.Req as Req
+import qualified Network.HTTP.Client as HTTP
 import Options.Applicative
+import qualified System.Console.ANSI as Ansi
+import qualified Text.Toml as Toml
+import qualified Text.Toml.Types as Toml
 
 import AOC.Solution
 
@@ -93,18 +106,48 @@ parseCommand =
         )
 
 data Cfg = Cfg
-  { cfgToken :: Maybe String
-  }
+  { cfgToken :: Maybe Text
+  } deriving Show
+
+emptyCfg :: Cfg
+emptyCfg = Cfg Nothing
+
+fgColor :: Ansi.ColorIntensity -> Ansi.Color -> IO ()
+fgColor intensity color = Ansi.setSGR [Ansi.SetColor Ansi.Foreground intensity color]
 
 parseCfgFile :: FilePath -> IO Cfg
-parseCfgFile _ = pure (Cfg Nothing)
+parseCfgFile fp = handle handler $ do
+    parseResult <- Toml.parseTomlDoc fp <$> Text.readFile fp
+    case parseResult of
+      Left err -> do
+        fgColor Ansi.Dull Ansi.Red
+        printf "Error parsing %v as TOML:\n" fp
+        print err
+        useEmptyCfg      
+      Right tbl -> case HashMap.lookup "session-token" tbl of
+        Nothing -> pure $ Cfg Nothing
+        Just (Toml.VString tok) -> pure $ Cfg (Just tok)
+        _ -> do
+          fgColor Ansi.Dull Ansi.Red
+          printf "Illegal TOML format: `session-token` should be a string.\n"
+          useEmptyCfg
+  where
+    handler (e :: IOException) = do
+      fgColor Ansi.Dull Ansi.Red
+      printf "Error opening %v:\n" fp
+      print e
+      useEmptyCfg
+    useEmptyCfg = do
+      printf "Using default config: %v\n" (show emptyCfg)
+      pure emptyCfg
+
 
 aocMain :: {- | The year we're in -} Int -> {- | The solutions -} Solutions -> IO ()
 aocMain yr solutions = do
   hSetEncoding stdout utf8
   cmd <- execParser $ info (parseCommand <**> helper) (progDesc $ "Advent of Code " <> show yr <> " solutions.")
   case cmd of
-    CmdFetchInput opts day      -> fetchInput opts day
+    CmdFetchInput opts day      -> fetchInput yr opts day
     CmdTest target              -> runTest target solutions
     CmdSolve opts target upload -> runSolve opts target upload solutions
 
@@ -121,13 +164,37 @@ die' s = do
   Ansi.hSetSGR stderr [Ansi.SetColor Ansi.Foreground Ansi.Vivid Ansi.Red ]
   die s
 
-fetchInput :: Opts -> Day -> IO ()
-fetchInput opts day = do
-  printf "Fetching input for day %v.\n" day
-  cfg <- parseCfgFile (oCfg opts)
-  case cfgToken cfg of
-    Nothing -> die' "Can't fetch input: missing session token!"
-    Just tok -> die' "fetchInput: not implemented"
+fetchInput :: Int -> Opts -> Day -> IO ()
+fetchInput year opts day = do
+    printf "Fetching input for day %v.\n" day
+    cfg <- parseCfgFile (oCfg opts)
+    case cfgToken cfg of
+      Nothing -> die' "Can't fetch input: missing session token!"
+      Just tok -> do
+        now <- getCurrentTime
+        response <- runReq def $
+          req GET
+              (https "adventofcode.com" /~ year /: "day" /~ fromIntegral @_ @Int day /: "input")
+              NoReqBody
+              bsResponse
+              (cookieJar (sessTokenJar now tok))
+        let outfile = printf "%s/day%.2d.txt" (oInputDataDir opts) day
+        ByteString.writeFile outfile (responseBody response)
+
+sessTokenJar :: UTCTime -> Text -> HTTP.CookieJar
+sessTokenJar now tok = HTTP.createCookieJar [HTTP.Cookie
+  { HTTP.cookie_name = "session"
+  , HTTP.cookie_value = Text.encodeUtf8 tok
+  , HTTP.cookie_expiry_time = 3600 `addUTCTime` now
+  , HTTP.cookie_domain = ".adventofcode.com"
+  , HTTP.cookie_path = "/"
+  , HTTP.cookie_creation_time = (-3600) `addUTCTime` now
+  , HTTP.cookie_last_access_time = now
+  , HTTP.cookie_persistent = True
+  , HTTP.cookie_host_only = True
+  , HTTP.cookie_secure_only = True
+  , HTTP.cookie_http_only = False
+  }]
 
 runTest :: RunTarget -> Solutions -> IO ()
 runTest target solutions = case target of
@@ -151,66 +218,65 @@ runTestsOn Solution{tests,decodeInput,solvePart,showResult} parts =
     printf "  Test #%v" n
     case decodeInput input of
       Nothing -> do
-        Ansi.setSGR [Ansi.SetColor Ansi.Foreground Ansi.Dull Ansi.Red]
+        fgColor Ansi.Dull Ansi.Red
         printf "    Couldn't decode input.\n"
       Just dat -> for_ parts $ \part ->
         for_ (List.lookup part expected) $ \expectedResult -> do
           case solvePart part dat of
             Nothing -> do
-              Ansi.setSGR [Ansi.SetColor Ansi.Foreground Ansi.Dull Ansi.Red]
+              fgColor Ansi.Dull Ansi.Red
               printf "    %v: [✘] No solution.\n" part
             Just raw -> do
               let result = showResult part raw
               if result == expectedResult
                 then do
-                  Ansi.setSGR [Ansi.SetColor Ansi.Foreground Ansi.Dull Ansi.Green]
+                  fgColor Ansi.Dull Ansi.Green
                   printf "    %v: [✔] Passed.\n" part
                 else do
-                  Ansi.setSGR [Ansi.SetColor Ansi.Foreground Ansi.Vivid Ansi.Red]
+                  fgColor Ansi.Vivid Ansi.Red
                   printf "    %v: [✘] Failed, expected: %v, got: %v\n" part expectedResult result
 
 runSolve :: Opts -> RunTarget -> Bool -> Solutions -> IO ()
-runSolve opts target upload solutions = case target of
-  RunAll -> flip Vector.imapM_ solutions $ \i sln -> do
-    runSolveOn (i+1) opts upload sln (parts sln)
-  RunSolution day -> case solutionForDay solutions day of
-    Nothing -> die' $ printf "There is no solution for day %v!" day
-    Just sln -> runSolveOn (fromIntegral day) opts upload sln (parts sln)
-  RunSolutionPart day ps -> case solutionForDay solutions day of
-    Nothing -> die' $ printf "There is no solution for day %v!" day
-    Just sln -> for_ ps $ \part ->
-      if part `notElem` (parts sln)
-        then die' $ printf "The solution for day %v does not have a part %v!" day part
-        else runSolveOn (fromIntegral day) opts upload sln [part]
+runSolve opts target upload solutions = do
+  cfg <- parseCfgFile (oCfg opts)
+  case target of
+    RunAll -> flip Vector.imapM_ solutions $ \i sln -> do
+      runSolveOn (i+1) opts cfg upload sln (parts sln)
+    RunSolution day -> case solutionForDay solutions day of
+      Nothing -> die' $ printf "There is no solution for day %v!" day
+      Just sln -> runSolveOn (fromIntegral day) opts cfg upload sln (parts sln)
+    RunSolutionPart day ps -> case solutionForDay solutions day of
+      Nothing -> die' $ printf "There is no solution for day %v!" day
+      Just sln -> for_ ps $ \part ->
+        if part `notElem` (parts sln)
+          then die' $ printf "The solution for day %v does not have a part %v!" day part
+          else runSolveOn (fromIntegral day) opts cfg upload sln [part]
 
-runSolveOn :: Int -> Opts -> Bool -> Solution -> [Part] -> IO ()
-runSolveOn day opts upload Solution{decodeInput,solvePart,showResult} parts = do
+runSolveOn :: Int -> Opts -> Cfg -> Bool -> Solution -> [Part] -> IO ()
+runSolveOn day opts cfg upload Solution{decodeInput,solvePart,showResult} parts = do
   Ansi.setSGR []
   printf "Running solution for day %v...\n" day
   let infile = printf "%s/day%.2d.txt" (oInputDataDir opts) day
   input <- readFile infile
   case decodeInput input of
     Nothing -> do
-      Ansi.setSGR [Ansi.SetColor Ansi.Foreground Ansi.Dull Ansi.Red]
+      fgColor Ansi.Dull Ansi.Red
       printf "  Couldn't decode input: %v\n" infile
     Just dat -> for_ parts $ \part -> do
       case solvePart part dat of
         Nothing  -> do
-          Ansi.setSGR [Ansi.SetColor Ansi.Foreground Ansi.Dull Ansi.Red]
+          fgColor Ansi.Dull Ansi.Red
           printf "  %v: [✘] No solution.\n" part
         Just raw -> do
           let result = showResult part raw
-          Ansi.setSGR [Ansi.SetColor Ansi.Foreground Ansi.Dull Ansi.Green]
+          fgColor Ansi.Dull Ansi.Green
           printf "  %v: [✔] The solution is:\n  %v\n" part result
           when upload $ do
-            cfg <- parseCfgFile (oCfg opts)
             case cfgToken cfg of
               Nothing -> do
-                Ansi.setSGR [Ansi.SetColor Ansi.Foreground Ansi.Dull Ansi.Red]
+                fgColor Ansi.Dull Ansi.Red
                 printf "Can't upload solution: missing session token!\n"
               Just tok -> printf "Solution upload: not implemented\n"
-
-data SolutionFailure = CantDecode | NoSuchPart | NoSolution !Char
 
 maybeToRight :: e -> Maybe a -> Either e a
 maybeToRight e = maybe (Left e) Right

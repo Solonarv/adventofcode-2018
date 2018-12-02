@@ -19,6 +19,7 @@ common deps
                      , vector
                      , bytestring
                      , text
+                     , unordered-containers
 
 common lang
   default-language:    Haskell2010
@@ -39,10 +40,17 @@ executable solve
 
 library
   import: deps, lang
-  hs-source-dirs: harness
-  exposed-modules: AOC.Solution, AOC.Harness
-  build-depends: optparse-applicative, finite-typelits, ansi-terminal
-  ghc-options: -Wno-orphans
+  hs-source-dirs:      harness
+  exposed-modules:     AOC.Solution, AOC.Harness
+  build-depends:       optparse-applicative
+                     , finite-typelits
+                     , ansi-terminal
+                     , htoml
+                     , req
+                     , http-client
+                     , time
+                     , data-default
+  ghc-options:         -Wno-orphans
 
 library day01
   import: deps, lang
