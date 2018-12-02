@@ -7,23 +7,23 @@ import Data.Maybe
 import Data.IntMap.Strict (IntMap)
 import qualified Data.IntMap.Strict as IntMap
 
-run :: [String] -> IO ()
-run args = do
-  let infile = case args of
-        fp:_ | fp /= "." -> fp
-        _ -> "day02/input.txt"
-  case args of
-    _:"checksum":_ -> do
-      putStr "Checksum: "
-      readFile infile >>= print . checksum . decode
-    _ -> do 
-      putStr "Neighbors: "
-      readFile infile >>= print . coalesceNeighbors . findNeighbors . decode
+import AOC.Solution
+
+solution :: Solution
+solution = Solution
+  { decodeInput = Just . lines
+  , parts = ['a', 'b']
+  , solvePart = \case
+      'a' -> Just . Left . checksum
+      'b' -> Just . Right . findNeighbors
+      _ -> const Nothing
+  , showResult = \_ -> \case
+      Left chksm -> show chksm
+      Right neighbors -> coalesceNeighbors neighbors
+  , tests = []
+  }
 
 type BoxId = String
-
-decode :: String -> [BoxId]
-decode = lines
 
 c2i :: Char -> Int
 c2i = Data.Char.ord

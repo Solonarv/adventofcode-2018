@@ -1,27 +1,23 @@
 module Day01 where
 
 import Data.Foldable
+import Text.Read
 
 import qualified Data.IntSet as IntSet
 
-run :: [String] -> IO ()
-run args = do
-  let infile = case args of
-        fp:_ | fp /= "." -> fp
-        _ -> "day01/input.txt"
-  case args of
-    _:"sum":_ -> do
-      putStr "Sum: "
-      readFile infile >>= print . sum' . decode
-    _ -> do 
-      putStr "First repeat: "
-      readFile infile >>= print . firstRepeat . decode
+import AOC.Solution
 
-sum' :: [Int] -> Int
-sum' = foldl' (+) 0
-
-decode :: String -> [Int]
-decode = fmap read . words . filter (`notElem` ",+")
+solution :: Solution
+solution = Solution
+  { decodeInput = traverse readMaybe . words . filter (`notElem` ",+")
+  , parts = ['a', 'b']
+  , solvePart = \case
+      'a' -> Just . foldl' (+) 0
+      'b' -> Just . firstRepeat
+      _ -> const Nothing
+  , showResult = \_ -> show
+  , tests = []
+  }
 
 firstRepeat :: [Int] -> Int
 firstRepeat is = go is 0 mempty

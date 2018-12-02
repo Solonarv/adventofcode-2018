@@ -27,28 +27,31 @@ common lang
                        TypeFamilyDependencies TypeOperators PolyKinds RankNTypes
                        TypeApplications ScopedTypeVariables ConstraintKinds FunctionalDependencies
                        MultiParamTypeClasses NamedFieldPuns LambdaCase BangPatterns DerivingStrategies
-                       GeneralizedNewtypeDeriving RoleAnnotations
+                       GeneralizedNewtypeDeriving RoleAnnotations TupleSections
   ghc-options:         -Wall -O2
 
 executable solve
   import: deps, lang
   main-is:             Main.hs
   hs-source-dirs:      src
-  build-depends:       aoc2018
+  build-depends:       aoc2018, day01, day02
   ghc-options:         -threaded -rtsopts -funbox-small-strict-fields
 
 library
   import: deps, lang
-  exposed-modules:     Solutions
-  hs-source-dirs:      lib
-  build-depends: day01, day02
+  hs-source-dirs: harness
+  exposed-modules: AOC.Solution, AOC.Harness
+  build-depends: optparse-applicative, finite-typelits, ansi-terminal
+  ghc-options: -Wno-orphans
 
 library day01
   import: deps, lang
   exposed-modules: Day01
   hs-source-dirs: day01
+  build-depends: aoc2018
 
 library day02
   import: deps, lang
   exposed-modules: Day02
   hs-source-dirs: day02
+  build-depends: aoc2018

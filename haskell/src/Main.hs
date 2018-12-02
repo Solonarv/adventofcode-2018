@@ -1,20 +1,11 @@
 module Main where
 
-import System.Environment (getArgs)
-import Text.Read
+import AOC.Harness
+import qualified Day01
+import qualified Day02
 
-import Solutions
+solutions :: Solutions
+solutions = solutionsFromList [Day01.solution, Day02.solution]
 
 main :: IO ()
-main = do
-  args <- getArgs
-  case args of
-    s:ss | Just i <- readMaybe s
-         -> do
-              case nthSolution i of
-                Nothing -> putStrLn $ "No solution for day " <> show i
-                Just sln -> do
-                  putStrLn $ "Running solution for day " <> show i
-                  putStrLn $ "With arguments: " <> show ss
-                  sln ss
-    _ -> do putStrLn "Running all solutions"; allSolutions []
+main = aocMain 2018 solutions
