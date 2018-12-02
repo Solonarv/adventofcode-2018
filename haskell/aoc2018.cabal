@@ -35,15 +35,20 @@ executable solve
   main-is:             Main.hs
   hs-source-dirs:      src
   build-depends:       aoc2018
-  ghc-options:         -threaded -rtsopts
+  ghc-options:         -threaded -rtsopts -funbox-small-strict-fields
 
 library
   import: deps, lang
   exposed-modules:     Solutions
   hs-source-dirs:      lib
-  build-depends: day01
+  build-depends: day01, day02
 
 library day01
   import: deps, lang
   exposed-modules: Day01
   hs-source-dirs: day01
+
+library day02
+  import: deps, lang
+  exposed-modules: Day02
+  hs-source-dirs: day02
