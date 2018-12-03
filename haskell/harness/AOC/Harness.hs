@@ -218,7 +218,7 @@ runTestsOn :: Solution -> [Part] -> IO ()
 runTestsOn Solution{tests,decodeInput,solvePart,showResult} parts =
   for_ (zip [1..] tests) $ \(n :: Int, input :=> expected) -> do
     Ansi.setSGR []
-    printf "  Test #%v" n
+    printf "  Test #%v\n" n
     case decodeInput input of
       Nothing -> do
         fgColor Ansi.Dull Ansi.Red
@@ -228,16 +228,16 @@ runTestsOn Solution{tests,decodeInput,solvePart,showResult} parts =
           case solvePart part dat of
             Nothing -> do
               fgColor Ansi.Dull Ansi.Red
-              printf "    %v: [✘] No solution.\n" part
+              printf "    %v: [X] No solution.\n" part
             Just raw -> do
               let result = showResult part raw
               if result == expectedResult
                 then do
                   fgColor Ansi.Dull Ansi.Green
-                  printf "    %v: [✔] Passed.\n" part
+                  printf "    %v: [OK] Passed.\n" part
                 else do
                   fgColor Ansi.Vivid Ansi.Red
-                  printf "    %v: [✘] Failed, expected: %v, got: %v\n" part expectedResult result
+                  printf "    %v: [X] Failed, expected: %v, got: %v\n" part expectedResult result
 
 runSolve :: Opts -> RunTarget -> Bool -> Solutions -> IO ()
 runSolve opts target upload solutions = do
@@ -269,11 +269,11 @@ runSolveOn day opts cfg upload Solution{decodeInput,solvePart,showResult} parts 
       case solvePart part dat of
         Nothing  -> do
           fgColor Ansi.Dull Ansi.Red
-          printf "  %v: [✘] No solution.\n" part
+          printf "  %v: [X] No solution.\n" part
         Just raw -> do
           let result = showResult part raw
           fgColor Ansi.Dull Ansi.Green
-          printf "  %v: [✔] The solution is:\n  %v\n" part result
+          printf "  %v: [OK] The solution is:\n  %v\n" part result
           when upload $ do
             case cfgToken cfg of
               Nothing -> do
