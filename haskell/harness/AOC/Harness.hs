@@ -20,11 +20,11 @@ import qualified Data.HashMap.Lazy as HashMap
 import Data.Text (Text)
 import qualified Data.Text.Encoding as Text
 import qualified Data.Text.IO as Text
-import Data.Time.Clock
+-- import Data.Time.Clock
 import Data.Vector (Vector)
 import qualified Data.Vector as Vector
 import Network.HTTP.Req as Req
-import qualified Network.HTTP.Client as HTTP
+-- import qualified Network.HTTP.Client as HTTP
 import Options.Applicative
 import qualified System.Console.ANSI as Ansi
 import qualified Text.Toml as Toml
@@ -171,7 +171,6 @@ fetchInput year opts day = do
     case cfgToken cfg of
       Nothing -> die' "Can't fetch input: missing session token!"
       Just tok -> do
-        now <- getCurrentTime
         response <- runReq def $
           req GET
               (https "adventofcode.com" /~ year /: "day" /~ fromIntegral @_ @Int day /: "input")
@@ -181,43 +180,26 @@ fetchInput year opts day = do
         let outfile = printf "%s/day%.2d.txt" (oInputDataDir opts) day
         ByteString.writeFile outfile (responseBody response)
 
-sessTokenJar :: UTCTime -> Text -> HTTP.CookieJar
-sessTokenJar now tok = HTTP.createCookieJar [HTTP.Cookie
-  { HTTP.cookie_name = "session"
-  , HTTP.cookie_value = Text.encodeUtf8 tok
-  , HTTP.cookie_expiry_time = 3600 `addUTCTime` now
-  , HTTP.cookie_domain = ".adventofcode.com"
-  , HTTP.cookie_path = "/"
-  , HTTP.cookie_creation_time = (-3600) `addUTCTime` now
-  , HTTP.cookie_last_access_time = now
-  , HTTP.cookie_persistent = True
-  , HTTP.cookie_host_only = True
-  , HTTP.cookie_secure_only = True
-  , HTTP.cookie_http_only = False
-  }]
-
 sessTokenHeader :: Text -> Option scheme
 sessTokenHeader tok = Req.header "Cookie" ("session=" <> Text.encodeUtf8 tok)
 
 runTest :: RunTarget -> Solutions -> IO ()
 runTest target solutions = case target of
-  RunAll -> flip Vector.imapM_ solutions $ \i sln -> do
-    printf "Running tests for day %v...\n" (i+1)
-    runTestsOn sln (parts sln)
+  RunAll -> flip Vector.imapM_ solutions $ \i sln ->
+    runTestsOn (i+1) sln (parts sln)
   RunSolution day -> case solutionForDay solutions day of
     Nothing -> die' $ printf "There is no solution for day %v!" day
-    Just sln -> runTestsOn sln (parts sln)
+    Just sln -> runTestsOn (fromIntegral day) sln (parts sln)
   RunSolutionPart day ps -> case solutionForDay solutions day of
     Nothing -> die' $ printf "There is no solution for day %v!" day
-    Just sln -> for_ ps $ \part ->
-      if part `notElem` (parts sln)
-        then die' $ printf "The solution for day %v does not have a part %v!" day part
-        else runTestsOn sln [part]
+    Just sln -> runTestsOn (fromIntegral day) sln (ps `List.intersect` parts sln)
 
-runTestsOn :: Solution -> [Part] -> IO ()
-runTestsOn Solution{tests,decodeInput,solvePart,showResult} parts =
+runTestsOn :: Int -> Solution -> [Part] -> IO ()
+runTestsOn day Solution{tests,decodeInput,solvePart,showResult} parts = do
+  fgColor Ansi.Vivid Ansi.Blue
+  printf "Running tests for day %v...\n" day
   for_ (zip [1..] tests) $ \(n :: Int, input :=> expected) -> do
-    Ansi.setSGR []
+    fgColor Ansi.Vivid Ansi.Blue
     printf "  Test #%v\n" n
     case decodeInput input of
       Nothing -> do
@@ -279,7 +261,7 @@ runSolveOn day opts cfg upload Solution{decodeInput,solvePart,showResult} parts 
               Nothing -> do
                 fgColor Ansi.Dull Ansi.Red
                 printf "Can't upload solution: missing session token!\n"
-              Just tok -> printf "Solution upload: not implemented\n"
+              Just _tok -> printf "Solution upload: not implemented\n"
 
 maybeToRight :: e -> Maybe a -> Either e a
 maybeToRight e = maybe (Left e) Right

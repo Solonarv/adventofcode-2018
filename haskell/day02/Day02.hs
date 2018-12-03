@@ -11,7 +11,7 @@ import AOC.Solution
 
 solution :: Solution
 solution = Solution
-  { decodeInput = Just . lines
+  { decodeInput = Just . words
   , parts = ['a', 'b']
   , solvePart = \case
       'a' -> Just . Left . checksum
@@ -20,7 +20,13 @@ solution = Solution
   , showResult = \_ -> \case
       Left chksm -> show chksm
       Right neighbors -> coalesceNeighbors neighbors
-  , tests = []
+  , tests =
+      [ "abcdef bababc abbcde abcccd aabcdd abcdee ababab" :=>
+          [ ('a', "12")
+          ]
+      , "abcde fghij klmno pqrst fguij axcye wvxyz" :=>
+          [ ('b', "fgij")]
+      ]
   }
 
 type BoxId = String
