@@ -20,6 +20,8 @@ common deps
                      , bytestring
                      , text
                      , unordered-containers
+                     , megaparsec
+                     , linear
 
 common lang
   default-language:    Haskell2010
@@ -35,7 +37,7 @@ executable solve
   import: deps, lang
   main-is:             Main.hs
   hs-source-dirs:      src
-  build-depends:       aoc2018, day01, day02
+  build-depends:       aoc2018, day01, day02, day03
   ghc-options:         -threaded -rtsopts -funbox-small-strict-fields
 
 library
@@ -62,4 +64,10 @@ library day02
   import: deps, lang
   exposed-modules: Day02
   hs-source-dirs: day02
+  build-depends: aoc2018
+
+library day03
+  import: deps, lang
+  exposed-modules: Day03
+  hs-source-dirs: day03
   build-depends: aoc2018

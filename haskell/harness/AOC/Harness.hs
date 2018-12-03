@@ -177,7 +177,7 @@ fetchInput year opts day = do
               (https "adventofcode.com" /~ year /: "day" /~ fromIntegral @_ @Int day /: "input")
               NoReqBody
               bsResponse
-              (cookieJar (sessTokenJar now tok))
+              (sessTokenHeader tok)
         let outfile = printf "%s/day%.2d.txt" (oInputDataDir opts) day
         ByteString.writeFile outfile (responseBody response)
 
@@ -195,6 +195,9 @@ sessTokenJar now tok = HTTP.createCookieJar [HTTP.Cookie
   , HTTP.cookie_secure_only = True
   , HTTP.cookie_http_only = False
   }]
+
+sessTokenHeader :: Text -> Option scheme
+sessTokenHeader tok = Req.header "Cookie" ("session=" <> Text.encodeUtf8 tok)
 
 runTest :: RunTarget -> Solutions -> IO ()
 runTest target solutions = case target of
