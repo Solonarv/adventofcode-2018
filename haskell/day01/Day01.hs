@@ -7,7 +7,7 @@ import qualified Data.IntSet as IntSet
 
 import AOC.Solution
 
-solution :: Solution
+solution :: Solution [Int] Int
 solution = Solution
   { decodeInput = traverse readMaybe . words . filter (`notElem` ",+")
   , parts = ['a', 'b']

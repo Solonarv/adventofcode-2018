@@ -151,12 +151,15 @@ aocMain yr solutions = do
     CmdTest target              -> runTest target solutions
     CmdSolve opts target upload -> runSolve opts target upload solutions
 
-type Solutions = Vector Solution
 
-solutionsFromList :: [Solution] -> Solutions
+data ASolution = forall a b. S (Solution a b)
+
+type Solutions = Vector ASolution
+
+solutionsFromList :: [ASolution] -> Solutions
 solutionsFromList = Vector.fromList
 
-solutionForDay :: Solutions -> Day -> Maybe Solution
+solutionForDay :: Solutions -> Day -> Maybe ASolution
 solutionForDay solutions day = solutions Vector.!? (fromIntegral day - 1)
 
 die' :: String -> IO ()
@@ -185,16 +188,16 @@ sessTokenHeader tok = Req.header "Cookie" ("session=" <> Text.encodeUtf8 tok)
 
 runTest :: RunTarget -> Solutions -> IO ()
 runTest target solutions = case target of
-  RunAll -> flip Vector.imapM_ solutions $ \i sln ->
+  RunAll -> flip Vector.imapM_ solutions $ \i (S sln) ->
     runTestsOn (i+1) sln (parts sln)
   RunSolution day -> case solutionForDay solutions day of
     Nothing -> die' $ printf "There is no solution for day %v!" day
-    Just sln -> runTestsOn (fromIntegral day) sln (parts sln)
+    Just (S sln) -> runTestsOn (fromIntegral day) sln (parts sln)
   RunSolutionPart day ps -> case solutionForDay solutions day of
     Nothing -> die' $ printf "There is no solution for day %v!" day
-    Just sln -> runTestsOn (fromIntegral day) sln (ps `List.intersect` parts sln)
+    Just (S sln) -> runTestsOn (fromIntegral day) sln (ps `List.intersect` parts sln)
 
-runTestsOn :: Int -> Solution -> [Part] -> IO ()
+runTestsOn :: Int -> Solution a b -> [Part] -> IO ()
 runTestsOn day Solution{tests,decodeInput,solvePart,showResult} parts = do
   fgColor Ansi.Vivid Ansi.Blue
   printf "Running tests for day %v...\n" day
@@ -225,19 +228,19 @@ runSolve :: Opts -> RunTarget -> Bool -> Solutions -> IO ()
 runSolve opts target upload solutions = do
   cfg <- parseCfgFile (oCfg opts)
   case target of
-    RunAll -> flip Vector.imapM_ solutions $ \i sln -> do
+    RunAll -> flip Vector.imapM_ solutions $ \i (S sln) -> do
       runSolveOn (i+1) opts cfg upload sln (parts sln)
     RunSolution day -> case solutionForDay solutions day of
       Nothing -> die' $ printf "There is no solution for day %v!" day
-      Just sln -> runSolveOn (fromIntegral day) opts cfg upload sln (parts sln)
+      Just (S sln) -> runSolveOn (fromIntegral day) opts cfg upload sln (parts sln)
     RunSolutionPart day ps -> case solutionForDay solutions day of
       Nothing -> die' $ printf "There is no solution for day %v!" day
-      Just sln -> for_ ps $ \part ->
+      Just (S sln) -> for_ ps $ \part ->
         if part `notElem` (parts sln)
           then die' $ printf "The solution for day %v does not have a part %v!" day part
           else runSolveOn (fromIntegral day) opts cfg upload sln [part]
 
-runSolveOn :: Int -> Opts -> Cfg -> Bool -> Solution -> [Part] -> IO ()
+runSolveOn :: Int -> Opts -> Cfg -> Bool -> Solution a b -> [Part] -> IO ()
 runSolveOn day opts cfg upload Solution{decodeInput,solvePart,showResult} parts = do
   Ansi.setSGR []
   printf "Running solution for day %v...\n" day

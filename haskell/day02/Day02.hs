@@ -9,7 +9,7 @@ import qualified Data.IntMap.Strict as IntMap
 
 import AOC.Solution
 
-solution :: Solution
+solution :: Solution [String] (Either Int (String, String))
 solution = Solution
   { decodeInput = Just . words
   , parts = ['a', 'b']

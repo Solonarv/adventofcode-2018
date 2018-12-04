@@ -15,7 +15,7 @@ import Text.Megaparsec.Char
 
 import AOC.Solution
 
-solution :: Solution
+solution :: Solution [Claim] Int
 solution = Solution
   { decodeInput = parseMaybe parseClaims
   , parts = ['a', 'b']

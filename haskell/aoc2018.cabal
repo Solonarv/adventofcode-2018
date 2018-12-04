@@ -22,6 +22,7 @@ common deps
                      , unordered-containers
                      , megaparsec
                      , linear
+                     , split
 
 common lang
   default-language:    Haskell2010
@@ -30,14 +31,14 @@ common lang
                        TypeFamilyDependencies TypeOperators PolyKinds RankNTypes
                        TypeApplications ScopedTypeVariables ConstraintKinds FunctionalDependencies
                        MultiParamTypeClasses NamedFieldPuns LambdaCase BangPatterns DerivingStrategies
-                       GeneralizedNewtypeDeriving RoleAnnotations TupleSections
+                       GeneralizedNewtypeDeriving RoleAnnotations TupleSections BlockArguments
   ghc-options:         -Wall -O2
 
 executable solve
   import: deps, lang
   main-is:             Main.hs
   hs-source-dirs:      src
-  build-depends:       aoc2018, day01, day02, day03
+  build-depends:       aoc2018, day01, day02, day03, day04
   ghc-options:         -threaded -rtsopts -funbox-small-strict-fields
 
 library
@@ -53,6 +54,11 @@ library
                      , time
                      , data-default
   ghc-options:         -Wno-orphans
+
+library util
+  import: deps, lang
+  hs-source-dirs:      util
+  exposed-modules:     Util
 
 library day01
   import: deps, lang
@@ -71,3 +77,9 @@ library day03
   exposed-modules: Day03
   hs-source-dirs: day03
   build-depends: aoc2018
+
+library day04
+  import: deps, lang
+  exposed-modules: Day04
+  hs-source-dirs: day04
+  build-depends: aoc2018, util
