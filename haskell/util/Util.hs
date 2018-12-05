@@ -1,6 +1,7 @@
 module Util where
 
 import Data.Foldable
+import Data.Function
 import Data.Maybe
 import Data.Void
 
@@ -18,7 +19,7 @@ int :: Parser Int
 int = read <$> many digitChar
 
 -- | Appropriately strict version of 'sum'.
-sum' :: Num a => [a] -> a
+sum' :: (Foldable t, Num a) => t a -> a
 sum' = foldl' (+) 0
 
 maxIndex :: (Foldable t, Ord a) => t a -> Maybe Int
@@ -47,3 +48,9 @@ invert = IntMap.fromListWith (<>) . fmap (\(v, f) -> (f, [v])) . Map.assocs . ge
 
 mostFrequent :: FreqMap a -> [a]
 mostFrequent = fromMaybe [] . fmap snd . IntMap.lookupMax . invert
+
+totalCount :: FreqMap a -> Int
+totalCount = sum' . getFreqs
+
+maximumOn :: (Foldable t, Ord i) => (a -> i) -> t a -> a
+maximumOn f = maximumBy (compare `on` f)
