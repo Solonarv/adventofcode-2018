@@ -54,3 +54,12 @@ totalCount = sum' . getFreqs
 
 maximumOn :: (Foldable t, Ord i) => (a -> i) -> t a -> a
 maximumOn f = maximumBy (compare `on` f)
+
+minimumOn :: (Foldable t, Ord i) => (a -> i) -> t a -> a
+minimumOn f = minimumBy (compare `on` f)
+
+-- | Repeatedly apply a function to an input until
+-- a fix-point is reached. May loop forever if no
+-- fix-point exists.
+fixIterate :: Eq a => (a -> a) -> a -> a
+fixIterate f x = if f x == x then x else fixIterate f (f x)

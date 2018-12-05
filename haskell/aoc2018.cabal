@@ -38,7 +38,7 @@ executable solve
   import: deps, lang
   main-is:             Main.hs
   hs-source-dirs:      src
-  build-depends:       aoc2018, day01, day02, day03, day04
+  build-depends:       aoc2018, day01, day02, day03, day04, day05
   ghc-options:         -threaded -rtsopts -funbox-small-strict-fields
 
 library
@@ -82,4 +82,10 @@ library day04
   import: deps, lang
   exposed-modules: Day04
   hs-source-dirs: day04
+  build-depends: aoc2018, util
+
+library day05
+  import: deps, lang
+  exposed-modules: Day05
+  hs-source-dirs: day05
   build-depends: aoc2018, util
