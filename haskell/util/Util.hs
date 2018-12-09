@@ -1,9 +1,13 @@
 module Util where
 
+import Control.Monad
+import Control.Monad.ST
 import Data.Foldable
 import Data.Function
 import Data.Maybe
+import Data.STRef
 import Data.Void
+import Unsafe.Coerce
 
 import Data.IntMap.Strict (IntMap)
 import qualified Data.IntMap.Strict as IntMap
@@ -63,3 +67,23 @@ minimumOn f = minimumBy (compare `on` f)
 -- fix-point exists.
 fixIterate :: Eq a => (a -> a) -> a -> a
 fixIterate f x = if f x == x then x else fixIterate f (f x)
+
+-- | Memoize a function using a @Map@. Uses a mutable reference internally.
+-- Note: this is a rather naive implementation. If the map becomes full,
+-- it will simply be cleared.
+memoMap :: forall a b. Ord a => Int -> (a -> b) -> (a -> b)
+memoMap maxSize f = f'
+  where
+    f' a = runST do
+      cache <- readSTRef cacheRef
+      case Map.lookup a cache of
+        Just b -> pure b
+        Nothing -> do
+          let b = f a
+          when (Map.size cache == maxSize) $
+            writeSTRef cacheRef Map.empty
+          modifySTRef cacheRef (Map.insert a b)
+          pure b
+    cacheRef :: forall s. STRef s (Map a b)
+    cacheRef = runST (unsafeCoerce (newSTRef Map.empty))
+    {-# NOINLINE cacheRef #-}
