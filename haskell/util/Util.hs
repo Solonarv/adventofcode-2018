@@ -1,13 +1,12 @@
 module Util where
 
 import Control.Monad
-import Control.Monad.ST
 import Data.Foldable
 import Data.Function
 import Data.Maybe
-import Data.STRef
+import Data.IORef
 import Data.Void
-import Unsafe.Coerce
+import System.IO.Unsafe
 
 import Data.IntMap.Strict (IntMap)
 import qualified Data.IntMap.Strict as IntMap
@@ -74,16 +73,16 @@ fixIterate f x = if f x == x then x else fixIterate f (f x)
 memoMap :: forall a b. Ord a => Int -> (a -> b) -> (a -> b)
 memoMap maxSize f = f'
   where
-    f' a = runST do
-      cache <- readSTRef cacheRef
+    f' a = unsafePerformIO do
+      cache <- readIORef cacheRef
       case Map.lookup a cache of
         Just b -> pure b
         Nothing -> do
           let b = f a
           when (Map.size cache == maxSize) $
-            writeSTRef cacheRef Map.empty
-          modifySTRef cacheRef (Map.insert a b)
+            writeIORef cacheRef Map.empty
+          modifyIORef cacheRef (Map.insert a b)
           pure b
-    cacheRef :: forall s. STRef s (Map a b)
-    cacheRef = runST (unsafeCoerce (newSTRef Map.empty))
+    cacheRef :: forall s. IORef s (Map a b)
+    cacheRef = unsafePerformIO (newIORef Map.empty)
     {-# NOINLINE cacheRef #-}
